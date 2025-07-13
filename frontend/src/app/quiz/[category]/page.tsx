@@ -1,7 +1,6 @@
 "use client"
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import { ArrowLeft, Home } from "lucide-react"
 import { Button } from "~/components/ui/button"
@@ -10,44 +9,39 @@ import { Progress } from "~/components/ui/progress"
 import { RadioGroup, RadioGroupItem } from "~/components/ui/radio-group"
 import { Label } from "~/components/ui/label"
 
-// 仮のクイズデータ
-const quizData = {
-  pregnancy: [
-    {
-      question: "妊娠中の女性の体重増加の理想的な範囲は？",
-      options: ["5kg未満", "7kg〜12kg", "15kg〜20kg", "制限なし"],
-      correctAnswer: 1,
-      explanation: "日本産科婦人科学会によると、妊娠中の理想的な体重増加は7kg〜12kgとされています。",
-    },
-    {
-      question: "つわりが一般的に始まるのは妊娠何週目頃？",
-      options: ["妊娠2週目頃", "妊娠6週目頃", "妊娠12週目頃", "妊娠20週目頃"],
-      correctAnswer: 1,
-      explanation: "つわりは一般的に妊娠6週目頃から始まり、16週目頃までに収まることが多いです。",
-    },
-    {
-      question: "妊娠中のパートナーへのサポートとして適切でないものは？",
-      options: [
-        "定期的な声かけと気遣い",
-        "家事の分担",
-        "栄養バランスの良い食事の準備",
-        "ストレス解消のためのお酒の提供",
-      ],
-      correctAnswer: 3,
-      explanation: "妊娠中の飲酒は胎児に悪影響を与える可能性があるため、パートナーも一緒に控えることが望ましいです。",
-    },
-  ],
-  // 他のカテゴリーのクイズデータも同様に定義
+type Question = {
+  id: number
+  category: string
+  question: string
+  options: string[]
+  correctAnswer: number
+  explanation: string
 }
 
 export default function Quiz({ params }: { params: { category: string } }) {
-  const router = useRouter()
   const category = params.category
+  const [questions, setQuestions] = useState<Question[]>([])
+  const [loading, setLoading] = useState(true)
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
   const [selectedOption, setSelectedOption] = useState<number | null>(null)
   const [showAnswer, setShowAnswer] = useState(false)
   const [score, setScore] = useState(0)
   const [quizCompleted, setQuizCompleted] = useState(false)
+
+  useEffect(() => {
+    const base = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080"
+    fetch(`${base}/quiz/${category}`)
+      .then((res) => res.json())
+      .then((data: Question[]) => {
+        setQuestions(data)
+        setLoading(false)
+      })
+      .catch((err
+      ) => {
+        console.error(err)
+        setLoading(false)
+      })
+  }, [category])
 
   // カテゴリー名の日本語マッピング
   const categoryNames: { [key: string]: string } = {
@@ -58,8 +52,15 @@ export default function Quiz({ params }: { params: { category: string } }) {
     development: "赤ちゃんの発達",
   }
 
-  // 該当するカテゴリーのクイズデータがない場合
-  if (!quizData[category as keyof typeof quizData]) {
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-pink-50 to-blue-50">
+      <p>Loading...</p>
+    </div>
+    )
+  }
+
+  if (questions.length === 0) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-pink-50 to-blue-50">
         <Card className="w-full max-w-md">
@@ -79,7 +80,6 @@ export default function Quiz({ params }: { params: { category: string } }) {
     )
   }
 
-  const questions = quizData[category as keyof typeof quizData]
   const currentQuestion = questions[currentQuestionIndex]
   const progress = ((currentQuestionIndex + 1) / questions.length) * 100
 
