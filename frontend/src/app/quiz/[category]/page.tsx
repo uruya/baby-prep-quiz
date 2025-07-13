@@ -30,7 +30,7 @@ export default function Quiz({ params }: { params: { category: string } }) {
 
   useEffect(() => {
     const base = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080"
-    fetch(`${base}/quiz/${category}`)
+    fetch(`${base}/api/quiz/${category}`)
       .then((res) => res.json())
       .then((data: Question[]) => {
         setQuestions(data)
