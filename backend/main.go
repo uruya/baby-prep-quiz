@@ -3,25 +3,41 @@ package main
 import (
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
-	"os"
 	"strings"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/spf13/viper"
 )
 
 type Question struct {
-	ID int   `json:"id"`
-	Category string `json:"category"`
-	Question string `json:"question"`
-	Options []string `json:"options"`
-	CorrectAnswer int `json:"correctAnswer"`
-	Explanation string `json:"explanation"`
+	ID            int      `json:"id"`
+	Category      string   `json:"category"`
+	Question      string   `json:"question"`
+	Options       []string `json:"options"`
+	CorrectAnswer int      `json:"correctAnswer"`
+	Explanation   string   `json:"explanation"`
 }
 
 func main() {
-	dbURL := "postgres://" + os.Getenv("POSTGRES_USER") + ":" + os.Getenv("POSTGRES_PASSWORD") + "@localhost:5432/" + os.Getenv("POSTGRES_DB") + "?sslmode=disable"
+	viper.SetConfigName("config") // ファイル名 (拡張子なし)
+	viper.SetConfigType("yaml")   // ファイルの形式
+	viper.AddConfigPath(".")      // カレントディレクトリを設定
+	if err := viper.ReadInConfig(); err != nil {
+		log.Fatalf("Error reading config file %s", err)
+	}
+
+	// 読み込んだ設定からDB接続文字列を生成
+	dbHost := viper.GetString("database.host")
+	dbPort := viper.GetInt("database.port")
+	dbUser := viper.GetString("database.user")
+	dbPassword := viper.GetString("database.password")
+	dbName := viper.GetString("database.dbname")
+
+	dbURL := fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=disable",
+		dbUser, dbPassword, dbHost, dbPort, dbName)
 
 	db, err := sql.Open("pgx", dbURL)
 	if err != nil {
