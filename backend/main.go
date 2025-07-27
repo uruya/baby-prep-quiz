@@ -9,6 +9,10 @@ import (
 	"strings"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
+
+	"github.com/golang-migrate/migrate/v4"
+	"github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/spf13/viper"
 )
 
@@ -50,6 +54,25 @@ func main() {
 		log.Fatalf("Failed to ping database: %v\n", err)
 	}
 	log.Println("Database successfully connected")
+
+	// --- マイグレーション処理 ---
+	driver, err := postgres.WithInstance(db, &postgres.Config{})
+	if err != nil {
+		log.Fatalf("could not create postgres driver: %v", err)
+	}
+
+	m, err := migrate.NewWithDatabaseInstance(
+		"file://migrations", // マイグレーションファイルの場所
+		"postgres", driver)
+	if err != nil {
+		log.Fatalf("could not create migrate instance: %v", err)
+	}
+
+	// 現在のバージョンを確認し、必要ならマイグレーションを実行
+	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
+		log.Fatalf("could not run migrate up: %v", err)
+	}
+	log.Println("Database migration completed!")
 
 	// CORS設定
 	corsHandler := func(h http.Handler) http.Handler {

@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import React, { useEffect, useState } from "react"
 import Link from "next/link"
 import { ArrowLeft, Home } from "lucide-react"
 import { Button } from "~/components/ui/button"
@@ -18,8 +18,10 @@ type Question = {
   explanation: string
 }
 
-export default function Quiz({ params }: { params: { category: string } }) {
-  const category = params.category
+
+export default function Quiz({ params }: { params: Promise<{ category: string }> }) {
+  // Next.js 14+ で params は Promise になるため unwrap
+  const { category } = React.use(params)
   const [questions, setQuestions] = useState<Question[]>([])
   const [loading, setLoading] = useState(true)
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
@@ -60,7 +62,7 @@ export default function Quiz({ params }: { params: { category: string } }) {
     )
   }
 
-  if (questions.length === 0) {
+  if (!questions || questions?.length === 0) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-pink-50 to-blue-50">
         <Card className="w-full max-w-md">

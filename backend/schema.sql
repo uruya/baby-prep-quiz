@@ -28,3 +28,26 @@ INSERT INTO questions (category, question, options, correct_answer, explanation)
     3,
     '妊娠中の飲酒は胎児に悪影響を与える可能性があるため、パートナーも一緒に控えることが望ましいです。')
 ON CONFLICT (id) DO NOTHING;
+
+-- カテゴリ: birth (出産の準備)
+INSERT INTO questions (id, category, question, options, correct_answer, explanation) VALUES
+(4, 'birth', '陣痛が始まったと感じた時、まず何をすべき？',
+    '["すぐに病院へ向かう","お風呂に入る","病院に電話して指示を仰ぐ","食事をとる"]',
+    2,
+    'まずは慌てずに病院へ電話し、現在の状況（陣痛の間隔など）を伝えて指示を仰ぐのが一般的です。')
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO questions (id, category, question, options, correct_answer, explanation) VALUES
+(5, 'birth', '入院バッグに出産後すぐ必要になるものは？',
+    '["ベビー服","哺乳瓶","産褥ショーツ","離乳食"]',
+    2,
+    '産褥ショーツは、産後の悪露（おろ）に対応するために、出産後すぐに必要となるママのためのアイテムです。')
+ON CONFLICT (id) DO NOTHING;
+
+-- カテゴリ: baby-care (赤ちゃんのお世話)
+INSERT INTO questions (id, category, question, options, correct_answer, explanation) VALUES
+(6, 'baby-care', '新生児のおむつ替えの適切な頻度は？',
+    '["1日に3回","授乳のたび、または汚れたらその都度","朝と夜の2回","泣いたときだけ"]',
+    1,
+    '新生児は排泄の回数が多いため、授乳のたびやおむつが汚れていることに気づいた都度、交換してあげるのが理想的です。')
+ON CONFLICT (id) DO NOTHING;
