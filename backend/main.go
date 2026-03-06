@@ -29,8 +29,11 @@ func main() {
 	viper.SetConfigName("config") // ファイル名 (拡張子なし)
 	viper.SetConfigType("yaml")   // ファイルの形式
 	viper.AddConfigPath(".")      // カレントディレクトリを設定
+	// 環境変数対応: DATABASE_HOST → database.host のように自動マッピング
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+	viper.AutomaticEnv()
 	if err := viper.ReadInConfig(); err != nil {
-		log.Fatalf("Error reading config file %s", err)
+		log.Println("No config file found, using environment variables")
 	}
 
 	// 読み込んだ設定からDB接続文字列を生成
