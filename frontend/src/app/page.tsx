@@ -1,4 +1,5 @@
 import Link from "next/link"
+import Image from "next/image"
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "~/components/ui/card"
 
@@ -22,9 +23,11 @@ export default function Home() {
                 赤ちゃんの誕生は人生で最も素晴らしい瞬間の一つです。このアプリでは、出産前に知っておくべき知識をクイズ形式で学べます。
               </p>
               <div className="flex justify-center">
-                <img
-                  src="/placeholder.svg?height=150&width=150"
+                <Image
+                  src="/placeholder.svg"
                   alt="赤ちゃんのイラスト"
+                  width={150}
+                  height={150}
                   className="rounded-full border-4 border-pink-100"
                 />
               </div>

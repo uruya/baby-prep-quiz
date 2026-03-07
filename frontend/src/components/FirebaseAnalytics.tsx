@@ -5,11 +5,8 @@ import { analytics } from "~/lib/firebase";
 
 export function FirebaseAnalytics() {
   useEffect(() => {
-    // This will initialize analytics and log a page_view event
     if (typeof window !== "undefined") {
-      // By simply importing and using analytics, Firebase initializes it.
-      // You can log custom events here if needed, for example:
-      // logEvent(analytics, 'page_view', { page_path: window.location.pathname });
+      void analytics; // analyticsをインポートすることで初期化される
       console.log("Firebase Analytics initialized for:", window.location.pathname);
     }
   }, []);
