@@ -14,7 +14,8 @@ const firebaseConfig = {
 
 // アプリケーションが既に初期化されているか確認し、されていなければ初期化する
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
-const analytics = getAnalytics(app);
+// analyticsはブラウザ環境でのみ初期化（SSR時はundefined）
+const analytics = typeof window !== "undefined" ? getAnalytics(app) : null;
 const auth = getAuth(app);
 
 export { app, auth, analytics };
