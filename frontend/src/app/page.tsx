@@ -24,7 +24,7 @@ export default function Home() {
               </p>
               <div className="flex justify-center">
                 <Image
-                  src="/placeholder.svg"
+                  src="/father-and-baby-illustration.jpg"
                   alt="赤ちゃんのイラスト"
                   width={150}
                   height={150}

@@ -43,8 +43,9 @@ func main() {
 	dbPassword := viper.GetString("database.password")
 	dbName := viper.GetString("database.dbname")
 
-	dbURL := fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=require",
-		dbUser, dbPassword, dbHost, dbPort, dbName)
+	dbSSLMode := viper.GetString("database.sslmode")
+	dbURL := fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=%s",
+		dbUser, dbPassword, dbHost, dbPort, dbName, dbSSLMode)
 
 	db, err := sql.Open("pgx", dbURL)
 	if err != nil {
