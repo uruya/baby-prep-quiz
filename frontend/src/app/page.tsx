@@ -51,6 +51,19 @@ export default function Home() {
               </Button>
             </Link>
           </div>
+          <div className="mt-6 text-center space-y-2">
+            <Link href="/auth/login" className="block">
+              <Button
+                variant="outline"
+                className="w-full border-blue-200 text-blue-700 hover:bg-blue-50 bg-transparent"
+              >
+                ログイン
+              </Button>
+            </Link>
+            <Link href="/auth/signup" className="block">
+              <Button className="w-full bg-blue-600 hover:bg-blue-700">新規登録</Button>
+            </Link>
+          </div>
         </div>
       </div>
     </div>
