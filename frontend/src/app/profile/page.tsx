@@ -1,14 +1,38 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
-import { Home, Trophy, BookOpen } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { Home, Trophy, BookOpen, LogOut } from "lucide-react"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
 import { Progress } from "~/components/ui/progress"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs"
 
 export default function Profile() {
+  const router = useRouter()
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null)
+
+  useEffect(() => {
+    fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/auth/me`, {
+      credentials: "include",
+    }).then((res) => {
+      if (res.ok) {
+        setIsLoggedIn(true)
+      } else {
+        router.push("/auth/login")
+      }
+    })
+  }, [])
+
+  const handleLogout = async () => {
+    await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/auth/logout`, {
+      method: "POST",
+      credentials: "include",
+    })
+    router.push("/")
+  }
+
   // 仮のユーザーデータ
   const [userData] = useState({
     name: "山田太郎",
@@ -29,6 +53,8 @@ export default function Profile() {
 
   const totalProgress = Math.round((userData.score / userData.maxScore) * 100)
 
+  if (isLoggedIn === null) return null
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-pink-50 to-blue-50">
       <div className="container mx-auto px-4 py-8">
@@ -40,7 +66,10 @@ export default function Profile() {
             </Button>
           </Link>
           <h1 className="text-2xl font-bold text-pink-600">マイページ</h1>
-          <div className="w-20"></div> {/* スペーサー */}
+          <Button variant="ghost" size="sm" className="flex items-center gap-1 text-gray-500" onClick={handleLogout}>
+            <LogOut className="h-4 w-4" />
+            ログアウト
+          </Button>
         </header>
 
         <div className="max-w-md mx-auto">
