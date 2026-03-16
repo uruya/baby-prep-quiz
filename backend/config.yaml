@@ -5,3 +5,9 @@ database:
   password: "postgres"
   dbname: "postgres"
   sslmode: "disable"
+
+jwt:
+  secret: "local-dev-secret-change-in-production"
+
+app:
+  frontend_url: "http://localhost:3000"

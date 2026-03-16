@@ -24,9 +24,10 @@ export default function LoginPage() {
 
     try {
       // TODO: API呼び出しでログイン処理を実装
-      const response = await fetch("/api/auth/login", {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ email, password }),
       })
 
@@ -36,7 +37,6 @@ export default function LoginPage() {
         return
       }
 
-      // ログイン成功時
       router.push("/profile")
     } catch (err) {
       setError("エラーが発生しました。もう一度お試しください。")
