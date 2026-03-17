@@ -77,7 +77,7 @@ func main() {
 		dbUser, dbPassword, dbHost, dbPort, dbName, dbSSLMode)
 
 	jwtSecret := viper.GetString("jwt.secret")
-	frontendURL := viper.GetString("app.frontend_url")
+	frontendURL := strings.TrimRight(viper.GetString("app.frontend_url"), "/")
 
 	db, err := sql.Open("pgx", dbURL)
 	if err != nil {
@@ -239,8 +239,8 @@ func main() {
 			Name:     "session",
 			Value:    tokenStr,
 			HttpOnly: true,
-			Secure:   dbSSLMode == "require", // 本番(HTTPS)のみSecure
-			SameSite: http.SameSiteLaxMode,
+			Secure:   true,
+			SameSite: http.SameSiteNoneMode, // クロスオリジンでcookieを送信するために必要
 			Path:     "/",
 			MaxAge:   60 * 60 * 24, // 24時間
 		})
@@ -290,6 +290,8 @@ func main() {
 			Name:     "session",
 			Value:    "",
 			HttpOnly: true,
+			Secure:   true,
+			SameSite: http.SameSiteNoneMode,
 			Path:     "/",
 			MaxAge:   -1,
 		})
