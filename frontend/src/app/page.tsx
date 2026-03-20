@@ -1,9 +1,22 @@
+"use client"
+
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "~/components/ui/card"
 
 export default function Home() {
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null)
+
+  useEffect(() => {
+    fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/auth/me`, {
+      credentials: "include",
+    }).then((res) => {
+      setIsLoggedIn(res.ok)
+    })
+  }, [])
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-pink-50 to-blue-50">
       <div className="container mx-auto px-4 py-8">
@@ -51,19 +64,22 @@ export default function Home() {
               </Button>
             </Link>
           </div>
-          <div className="mt-6 text-center space-y-2">
-            <Link href="/auth/login" className="block">
-              <Button
-                variant="outline"
-                className="w-full border-blue-200 text-blue-700 hover:bg-blue-50 bg-transparent"
-              >
-                ログイン
-              </Button>
-            </Link>
-            <Link href="/auth/signup" className="block">
-              <Button className="w-full bg-blue-600 hover:bg-blue-700">新規登録</Button>
-            </Link>
-          </div>
+
+          {isLoggedIn === false && (
+            <div className="mt-6 text-center space-y-2">
+              <Link href="/auth/login" className="block">
+                <Button
+                  variant="outline"
+                  className="w-full border-blue-200 text-blue-700 hover:bg-blue-50 bg-transparent"
+                >
+                  ログイン
+                </Button>
+              </Link>
+              <Link href="/auth/signup" className="block">
+                <Button className="w-full bg-blue-600 hover:bg-blue-700">新規登録</Button>
+              </Link>
+            </div>
+          )}
         </div>
       </div>
     </div>
