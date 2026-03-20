@@ -12,4 +12,5 @@ INSERT INTO questions (id, category, question, options, correct_answer, explanat
     1,
     '新生児は排泄の回数が多いため、授乳のたびやおむつが汚れていることに気づいた都度、交換してあげるのが理想的です。');
 
--- さらに追加したいクイズがあれば、ここに追記していく
+-- 明示的IDでINSERTした後はシーケンスをリセットする
+SELECT setval('questions_id_seq', (SELECT MAX(id) FROM questions));

@@ -20,3 +20,6 @@ INSERT INTO questions (id, category, question, options, correct_answer, explanat
     '["定期的な声かけと気遣い","家事の分担","栄養バランスの良い食事の準備","ストレス解消のためのお酒の提供"]',
     3,
     '妊娠中の飲酒は胎児に悪影響を与える可能性があるため、パートナーも一緒に控えることが望ましいです。');
+
+-- 明示的IDでINSERTした後はシーケンスをリセットする
+SELECT setval('questions_id_seq', (SELECT MAX(id) FROM questions));

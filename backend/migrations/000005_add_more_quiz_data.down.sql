@@ -1,1 +1,1 @@
-DELETE FROM questions WHERE id > 9;
+DELETE FROM questions WHERE id > 6;
