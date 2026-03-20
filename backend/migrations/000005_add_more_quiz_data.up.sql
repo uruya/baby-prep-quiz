@@ -1,5 +1,7 @@
--- SERIALシーケンスを現在の最大IDに合わせてリセット
-SELECT setval('questions_id_seq', (SELECT MAX(id) FROM questions));
+-- 前回の失敗時に部分挿入されたデータをクリーンアップ
+DELETE FROM questions WHERE id > 6;
+-- SERIALシーケンスをリセット
+SELECT setval('questions_id_seq', 6);
 
 -- カテゴリ: pregnancy (妊娠の基礎知識) 10問追加
 INSERT INTO questions (category, question, options, correct_answer, explanation) VALUES
