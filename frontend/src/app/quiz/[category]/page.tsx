@@ -120,14 +120,14 @@ export default function Quiz({ params }: { params: Promise<{ category: string }>
       <div className="container mx-auto px-4 py-8">
         <header className="flex items-center justify-between mb-8">
           <Link href="/categories">
-            <Button variant="ghost" size="sm" className="flex items-center gap-1">
+            <Button variant="ghost" size="sm" className="flex items-center gap-1 shrink-0">
               <ArrowLeft className="h-4 w-4" />
               戻る
             </Button>
           </Link>
-          <h1 className="text-xl font-bold text-pink-600">{categoryNames[category] || category}</h1>
+          <h1 className="text-base md:text-xl font-bold text-pink-600 text-center px-2 truncate">{categoryNames[category] || category}</h1>
           <Link href="/">
-            <Button variant="ghost" size="sm" className="flex items-center gap-1">
+            <Button variant="ghost" size="sm" className="flex items-center gap-1 shrink-0">
               <Home className="h-4 w-4" />
               ホーム
             </Button>

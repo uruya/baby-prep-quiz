@@ -91,13 +91,13 @@ export default function Profile() {
       <div className="container mx-auto px-4 py-8">
         <header className="flex items-center justify-between mb-8">
           <Link href="/">
-            <Button variant="ghost" size="sm" className="flex items-center gap-1">
+            <Button variant="ghost" size="sm" className="flex items-center gap-1 shrink-0">
               <Home className="h-4 w-4" />
               ホーム
             </Button>
           </Link>
-          <h1 className="text-2xl font-bold text-pink-600">マイページ</h1>
-          <Button variant="ghost" size="sm" className="flex items-center gap-1 text-gray-500" onClick={handleLogout}>
+          <h1 className="text-xl md:text-2xl font-bold text-pink-600">マイページ</h1>
+          <Button variant="ghost" size="sm" className="flex items-center gap-1 text-gray-500 shrink-0" onClick={handleLogout}>
             <LogOut className="h-4 w-4" />
             ログアウト
           </Button>

@@ -47,13 +47,13 @@ export default function Categories() {
       <div className="container mx-auto px-4 py-8">
         <header className="flex items-center justify-between mb-8">
           <Link href="/">
-            <Button variant="ghost" size="sm" className="flex items-center gap-1">
+            <Button variant="ghost" size="sm" className="flex items-center gap-1 shrink-0">
               <Home className="h-4 w-4" />
               ホーム
             </Button>
           </Link>
-          <h1 className="text-2xl font-bold text-pink-600">クイズカテゴリー</h1>
-          <div className="w-20"></div> {/* スペーサー */}
+          <h1 className="text-xl md:text-2xl font-bold text-pink-600">クイズカテゴリー</h1>
+          <div className="w-20 shrink-0"></div>
         </header>
 
         <div className="max-w-md mx-auto">
