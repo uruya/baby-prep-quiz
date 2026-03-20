@@ -1,3 +1,6 @@
+-- SERIALシーケンスを現在の最大IDに合わせてリセット
+SELECT setval('questions_id_seq', (SELECT MAX(id) FROM questions));
+
 -- カテゴリ: pregnancy (妊娠の基礎知識) 10問追加
 INSERT INTO questions (category, question, options, correct_answer, explanation) VALUES
 ('pregnancy', '妊娠初期に特に摂取が推奨されるビタミンは？',
