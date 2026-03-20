@@ -29,17 +29,20 @@ export default function Quiz({ params }: { params: Promise<{ category: string }>
   const [showAnswer, setShowAnswer] = useState(false)
   const [score, setScore] = useState(0)
   const [quizCompleted, setQuizCompleted] = useState(false)
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
 
   useEffect(() => {
     const base = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080"
-    fetch(`${base}/api/quiz/${category}`)
-      .then((res) => res.json())
-      .then((data: Question[]) => {
+    Promise.all([
+      fetch(`${base}/api/quiz/${category}`).then((res) => res.json()),
+      fetch(`${base}/api/auth/me`, { credentials: "include" }).then((res) => res.ok),
+    ])
+      .then(([data, loggedIn]: [Question[], boolean]) => {
         setQuestions(data)
+        setIsLoggedIn(loggedIn)
         setLoading(false)
       })
-      .catch((err
-      ) => {
+      .catch((err) => {
         console.error(err)
         setLoading(false)
       })
@@ -208,12 +211,22 @@ export default function Quiz({ params }: { params: Promise<{ category: string }>
                   </div>
                   <p className="text-gray-600">
                     {score === questions.length
-                      ? "素晴らしい！満点です！"
-                      : score >= questions.length / 2
-                        ? "よくできました！"
-                        : "もう一度挑戦してみましょう！"}
+                      ? "🎉 満点です！完璧な準備ができています！"
+                      : score >= questions.length * 0.8
+                        ? "素晴らしい！パパとして準備万端ですね！"
+                        : score >= questions.length * 0.6
+                          ? "よくできました！あと少しで完璧です！"
+                          : score >= questions.length * 0.4
+                            ? "まだまだ伸びしろがあります。一緒に学びましょう！"
+                            : "もう一度挑戦して、知識を深めましょう！"}
                   </p>
                 </div>
+                {!isLoggedIn && (
+                  <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700">
+                    ログインすると結果が保存され、成長を記録できます。
+                    <Link href="/auth/login" className="ml-1 font-semibold underline">ログインする</Link>
+                  </div>
+                )}
                 <div className="flex flex-col gap-3">
                   <Link href="/categories">
                     <Button variant="outline" className="w-full">

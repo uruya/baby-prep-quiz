@@ -75,6 +75,8 @@ export default function Profile() {
     { name: "妊娠の基礎知識マスター", category: "pregnancy", progress: 0 },
     { name: "出産の準備エキスパート", category: "birth", progress: 0 },
     { name: "赤ちゃんのお世話の達人", category: "baby-care", progress: 0 },
+    { name: "栄養と食事の専門家", category: "nutrition", progress: 0 },
+    { name: "発達サポーター", category: "development", progress: 0 },
   ].map((a) => {
     const cat = stats?.categories[a.category]
     return { ...a, progress: cat ? Math.round((cat.bestScore / cat.total) * 100) : 0 }
@@ -84,7 +86,11 @@ export default function Profile() {
     ? Math.round((stats.totalScore / stats.totalPossible) * 100)
     : 0
 
-  if (user === null) return null
+  if (user === null) return (
+    <div className="min-h-screen bg-gradient-to-b from-pink-50 to-blue-50 flex items-center justify-center">
+      <p className="text-gray-500">読み込み中...</p>
+    </div>
+  )
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-pink-50 to-blue-50">
