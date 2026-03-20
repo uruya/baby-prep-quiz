@@ -104,6 +104,13 @@ export default function Quiz({ params }: { params: Promise<{ category: string }>
       setSelectedOption(null)
       setShowAnswer(false)
     } else {
+      // scoreはhandleCheckAnswerで既に更新済み
+      fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/quiz/results`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ category, score, total: questions.length }),
+      }).catch((err) => console.error("結果の保存に失敗しました:", err))
       setQuizCompleted(true)
     }
   }

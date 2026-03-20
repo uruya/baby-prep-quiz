@@ -298,6 +298,114 @@ func main() {
 		w.WriteHeader(http.StatusNoContent)
 	})
 
+	// JWTからユーザーIDを取得するヘルパー
+	getUserID := func(r *http.Request) (int, bool) {
+		cookie, err := r.Cookie("session")
+		if err != nil {
+			return 0, false
+		}
+		c := &claims{}
+		token, err := jwt.ParseWithClaims(cookie.Value, c, func(t *jwt.Token) (interface{}, error) {
+			return []byte(jwtSecret), nil
+		})
+		if err != nil || !token.Valid {
+			return 0, false
+		}
+		return c.UserID, true
+	}
+
+	// POST /api/quiz/results - クイズ結果を保存
+	mux.HandleFunc("/api/quiz/results", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		userID, ok := getUserID(r)
+		if !ok {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusUnauthorized)
+			json.NewEncoder(w).Encode(errorResponse{Message: "未ログインです"})
+			return
+		}
+		var req struct {
+			Category string `json:"category"`
+			Score    int    `json:"score"`
+			Total    int    `json:"total"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(errorResponse{Message: "リクエストが不正です"})
+			return
+		}
+		_, err := db.Exec(
+			`INSERT INTO quiz_results (user_id, category, score, total) VALUES ($1, $2, $3, $4)`,
+			userID, req.Category, req.Score, req.Total,
+		)
+		if err != nil {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(errorResponse{Message: "保存に失敗しました"})
+			return
+		}
+		w.WriteHeader(http.StatusCreated)
+	})
+
+	// GET /api/quiz/stats - ユーザーの統計情報を取得
+	mux.HandleFunc("/api/quiz/stats", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		userID, ok := getUserID(r)
+		if !ok {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusUnauthorized)
+			json.NewEncoder(w).Encode(errorResponse{Message: "未ログインです"})
+			return
+		}
+		// カテゴリーごとの最高スコアを取得
+		rows, err := db.Query(`
+			SELECT category, MAX(score) as best_score, MAX(total) as total
+			FROM quiz_results
+			WHERE user_id = $1
+			GROUP BY category`, userID)
+		if err != nil {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(errorResponse{Message: "取得に失敗しました"})
+			return
+		}
+		defer rows.Close()
+
+		type CategoryStat struct {
+			BestScore int `json:"bestScore"`
+			Total     int `json:"total"`
+		}
+		categories := map[string]CategoryStat{}
+		completedQuizzes := 0
+		totalScore := 0
+		totalPossible := 0
+		for rows.Next() {
+			var category string
+			var stat CategoryStat
+			if err := rows.Scan(&category, &stat.BestScore, &stat.Total); err != nil {
+				continue
+			}
+			categories[category] = stat
+			completedQuizzes++
+			totalScore += stat.BestScore
+			totalPossible += stat.Total
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"completedQuizzes": completedQuizzes,
+			"totalScore":       totalScore,
+			"totalPossible":    totalPossible,
+			"categories":       categories,
+		})
+	})
+
 	mux.Handle("/api/quiz/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		category := strings.TrimPrefix(r.URL.Path, "/api/quiz/")
 		rows, err := db.Query(`SELECT id, category, question, options, correct_answer, explanation

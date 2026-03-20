@@ -1,0 +1,8 @@
+CREATE TABLE quiz_results (
+    id         SERIAL PRIMARY KEY,
+    user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    category   VARCHAR(100) NOT NULL,
+    score      INTEGER NOT NULL,
+    total      INTEGER NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);

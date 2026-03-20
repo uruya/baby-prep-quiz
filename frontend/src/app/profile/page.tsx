@@ -14,6 +14,18 @@ type UserData = {
   email: string
 }
 
+type CategoryStat = {
+  bestScore: number
+  total: number
+}
+
+type Stats = {
+  completedQuizzes: number
+  totalScore: number
+  totalPossible: number
+  categories: Record<string, CategoryStat>
+}
+
 type Badge = {
   name: string
   description: string
@@ -22,23 +34,27 @@ type Badge = {
 
 type Achievement = {
   name: string
+  category: string
   progress: number
 }
 
 export default function Profile() {
   const router = useRouter()
   const [user, setUser] = useState<UserData | null>(null)
+  const [stats, setStats] = useState<Stats | null>(null)
 
   useEffect(() => {
-    fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/auth/me`, {
-      credentials: "include",
-    }).then(async (res) => {
-      if (res.ok) {
-        const data = await res.json()
-        setUser(data)
-      } else {
+    const base = process.env.NEXT_PUBLIC_API_BASE_URL
+    Promise.all([
+      fetch(`${base}/api/auth/me`, { credentials: "include" }),
+      fetch(`${base}/api/quiz/stats`, { credentials: "include" }),
+    ]).then(async ([meRes, statsRes]) => {
+      if (!meRes.ok) {
         router.push("/auth/login")
+        return
       }
+      setUser(await meRes.json())
+      if (statsRes.ok) setStats(await statsRes.json())
     })
   }, [router])
 
@@ -56,10 +72,17 @@ export default function Profile() {
   ]
 
   const achievements: Achievement[] = [
-    { name: "妊娠の基礎知識マスター", progress: 0 },
-    { name: "出産の準備エキスパート", progress: 0 },
-    { name: "赤ちゃんのお世話の達人", progress: 0 },
-  ]
+    { name: "妊娠の基礎知識マスター", category: "pregnancy", progress: 0 },
+    { name: "出産の準備エキスパート", category: "birth", progress: 0 },
+    { name: "赤ちゃんのお世話の達人", category: "baby-care", progress: 0 },
+  ].map((a) => {
+    const cat = stats?.categories[a.category]
+    return { ...a, progress: cat ? Math.round((cat.bestScore / cat.total) * 100) : 0 }
+  })
+
+  const totalProgress = stats && stats.totalPossible > 0
+    ? Math.round((stats.totalScore / stats.totalPossible) * 100)
+    : 0
 
   if (user === null) return null
 
@@ -94,18 +117,18 @@ export default function Profile() {
                 <div>
                   <div className="flex justify-between text-sm mb-1">
                     <span>総合進捗</span>
-                    <span>0%</span>
+                    <span>{totalProgress}%</span>
                   </div>
-                  <Progress value={0} className="h-2" />
+                  <Progress value={totalProgress} className="h-2" />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4 text-center">
                   <div className="bg-pink-50 rounded-lg p-3">
-                    <div className="text-2xl font-bold text-pink-600">0</div>
+                    <div className="text-2xl font-bold text-pink-600">{stats?.completedQuizzes ?? 0}</div>
                     <div className="text-xs text-gray-600">完了したクイズ</div>
                   </div>
                   <div className="bg-blue-50 rounded-lg p-3">
-                    <div className="text-2xl font-bold text-blue-600">0</div>
+                    <div className="text-2xl font-bold text-blue-600">{stats?.totalScore ?? 0}</div>
                     <div className="text-xs text-gray-600">獲得ポイント</div>
                   </div>
                 </div>
