@@ -9,21 +9,38 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/com
 import { Progress } from "~/components/ui/progress"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs"
 
+type UserData = {
+  name: string
+  email: string
+}
+
+type Badge = {
+  name: string
+  description: string
+  icon: React.ReactNode
+}
+
+type Achievement = {
+  name: string
+  progress: number
+}
+
 export default function Profile() {
   const router = useRouter()
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null)
+  const [user, setUser] = useState<UserData | null>(null)
 
   useEffect(() => {
     fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/auth/me`, {
       credentials: "include",
-    }).then((res) => {
+    }).then(async (res) => {
       if (res.ok) {
-        setIsLoggedIn(true)
+        const data = await res.json()
+        setUser(data)
       } else {
         router.push("/auth/login")
       }
     })
-  }, [])
+  }, [router])
 
   const handleLogout = async () => {
     await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/auth/logout`, {
@@ -33,27 +50,18 @@ export default function Profile() {
     router.push("/")
   }
 
-  // 仮のユーザーデータ
-  const [userData] = useState({
-    name: "山田太郎",
-    completedQuizzes: 8,
-    totalQuizzes: 15,
-    score: 24,
-    maxScore: 45,
-    badges: [
-      { name: "初心者パパ", description: "最初のクイズを完了", icon: <Trophy className="h-5 w-5 text-amber-500" /> },
-      { name: "知識収集家", description: "5つのクイズを完了", icon: <BookOpen className="h-5 w-5 text-blue-500" /> },
-    ],
-    achievements: [
-      { name: "妊娠の基礎知識マスター", progress: 66 },
-      { name: "出産の準備エキスパート", progress: 40 },
-      { name: "赤ちゃんのお世話の達人", progress: 20 },
-    ],
-  })
+  const badges: Badge[] = [
+    { name: "初心者パパ", description: "最初のクイズを完了", icon: <Trophy className="h-5 w-5 text-amber-500" /> },
+    { name: "知識収集家", description: "5つのクイズを完了", icon: <BookOpen className="h-5 w-5 text-blue-500" /> },
+  ]
 
-  const totalProgress = Math.round((userData.score / userData.maxScore) * 100)
+  const achievements: Achievement[] = [
+    { name: "妊娠の基礎知識マスター", progress: 0 },
+    { name: "出産の準備エキスパート", progress: 0 },
+    { name: "赤ちゃんのお世話の達人", progress: 0 },
+  ]
 
-  if (isLoggedIn === null) return null
+  if (user === null) return null
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-pink-50 to-blue-50">
@@ -76,28 +84,28 @@ export default function Profile() {
           <Card className="shadow-lg border-pink-100 mb-6">
             <CardHeader className="text-center bg-pink-50 rounded-t-lg pb-2">
               <div className="mx-auto mb-2 bg-white p-2 rounded-full w-20 h-20 flex items-center justify-center">
-                <span className="text-3xl font-bold text-pink-600">{userData.name.charAt(0)}</span>
+                <span className="text-3xl font-bold text-pink-600">{user.name.charAt(0)}</span>
               </div>
-              <CardTitle>{userData.name}</CardTitle>
-              <CardDescription>もうすぐパパになる準備中</CardDescription>
+              <CardTitle>{user.name}</CardTitle>
+              <CardDescription>{user.email}</CardDescription>
             </CardHeader>
             <CardContent className="pt-4">
               <div className="space-y-4">
                 <div>
                   <div className="flex justify-between text-sm mb-1">
                     <span>総合進捗</span>
-                    <span>{totalProgress}%</span>
+                    <span>0%</span>
                   </div>
-                  <Progress value={totalProgress} className="h-2" />
+                  <Progress value={0} className="h-2" />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4 text-center">
                   <div className="bg-pink-50 rounded-lg p-3">
-                    <div className="text-2xl font-bold text-pink-600">{userData.completedQuizzes}</div>
+                    <div className="text-2xl font-bold text-pink-600">0</div>
                     <div className="text-xs text-gray-600">完了したクイズ</div>
                   </div>
                   <div className="bg-blue-50 rounded-lg p-3">
-                    <div className="text-2xl font-bold text-blue-600">{userData.score}</div>
+                    <div className="text-2xl font-bold text-blue-600">0</div>
                     <div className="text-xs text-gray-600">獲得ポイント</div>
                   </div>
                 </div>
@@ -113,7 +121,7 @@ export default function Profile() {
 
             <TabsContent value="achievements">
               <div className="space-y-4">
-                {userData.achievements.map((achievement, index) => (
+                {achievements.map((achievement, index) => (
                   <div key={index} className="bg-white rounded-lg p-4 shadow-sm">
                     <div className="flex justify-between text-sm mb-1">
                       <span className="font-medium">{achievement.name}</span>
@@ -127,7 +135,7 @@ export default function Profile() {
 
             <TabsContent value="badges">
               <div className="grid grid-cols-2 gap-4">
-                {userData.badges.map((badge, index) => (
+                {badges.map((badge, index) => (
                   <Card key={index} className="shadow-sm border-pink-100">
                     <CardContent className="p-4 flex items-center gap-3">
                       <div className="p-2 rounded-full bg-pink-50">{badge.icon}</div>
