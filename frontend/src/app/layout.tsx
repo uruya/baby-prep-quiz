@@ -16,6 +16,9 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "パパクイズ",
   description: "赤ちゃんが生まれる前に知っておきたいことをクイズ形式で学べるアプリ",
+  icons: {
+    icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>👶</text></svg>",
+  },
 };
 
 export default function RootLayout({
