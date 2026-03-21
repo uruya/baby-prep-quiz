@@ -49,10 +49,9 @@ export default function SignUpPage() {
 
     try {
       // TODO: API呼び出しで登録処理を実装
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/auth/signup`, {
+      const response = await fetch(`/api/auth/signup`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify({
           name: formData.name,
           email: formData.email,

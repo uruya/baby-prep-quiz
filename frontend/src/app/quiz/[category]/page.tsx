@@ -32,10 +32,9 @@ export default function Quiz({ params }: { params: Promise<{ category: string }>
   const [isLoggedIn, setIsLoggedIn] = useState(false)
 
   useEffect(() => {
-    const base = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080"
     Promise.all([
-      fetch(`${base}/api/quiz/${category}`).then((res) => res.json()),
-      fetch(`${base}/api/auth/me`, { credentials: "include" }).then((res) => res.ok),
+      fetch(`/api/quiz/${category}`).then((res) => res.json()),
+      fetch(`/api/auth/me`).then((res) => res.ok),
     ])
       .then(([data, loggedIn]: [Question[], boolean]) => {
         setQuestions(data)
@@ -108,9 +107,8 @@ export default function Quiz({ params }: { params: Promise<{ category: string }>
       setShowAnswer(false)
     } else {
       // scoreはhandleCheckAnswerで既に更新済み
-      fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/quiz/results`, {
+      fetch(`/api/quiz/results`, {
         method: "POST",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ category, score, total: questions.length }),
       }).catch((err) => console.error("結果の保存に失敗しました:", err))

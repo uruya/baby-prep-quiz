@@ -10,9 +10,7 @@ export default function Home() {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null)
 
   useEffect(() => {
-    fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/auth/me`, {
-      credentials: "include",
-    }).then((res) => {
+    fetch(`/api/auth/me`).then((res) => {
       setIsLoggedIn(res.ok)
     })
   }, [])

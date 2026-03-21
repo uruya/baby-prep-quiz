@@ -44,10 +44,9 @@ export default function Profile() {
   const [stats, setStats] = useState<Stats | null>(null)
 
   useEffect(() => {
-    const base = process.env.NEXT_PUBLIC_API_BASE_URL
     Promise.all([
-      fetch(`${base}/api/auth/me`, { credentials: "include" }),
-      fetch(`${base}/api/quiz/stats`, { credentials: "include" }),
+      fetch(`/api/auth/me`),
+      fetch(`/api/quiz/stats`),
     ]).then(async ([meRes, statsRes]) => {
       if (!meRes.ok) {
         router.push("/auth/login")
@@ -59,10 +58,7 @@ export default function Profile() {
   }, [router])
 
   const handleLogout = async () => {
-    await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/auth/logout`, {
-      method: "POST",
-      credentials: "include",
-    })
+    await fetch(`/api/auth/logout`, { method: "POST" })
     router.push("/")
   }
 
