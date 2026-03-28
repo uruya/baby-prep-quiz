@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react"
 import Link from "next/link"
-import { ArrowLeft, Home } from "lucide-react"
+import { ArrowLeft, Home, Crown } from "lucide-react"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "~/components/ui/card"
 import { Progress } from "~/components/ui/progress"
@@ -18,7 +18,6 @@ type Question = {
   explanation: string
 }
 
-
 export default function Quiz({ params }: { params: Promise<{ category: string }> }) {
   // Next.js 14+ で params は Promise になるため unwrap
   const { category } = React.use(params)
@@ -30,15 +29,25 @@ export default function Quiz({ params }: { params: Promise<{ category: string }>
   const [score, setScore] = useState(0)
   const [quizCompleted, setQuizCompleted] = useState(false)
   const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const [premiumRequired, setPremiumRequired] = useState(false)
 
   useEffect(() => {
     Promise.all([
-      fetch(`/api/quiz/${category}`).then((res) => res.json()),
+      fetch(`/api/quiz/${category}`),
       fetch(`/api/auth/me`).then((res) => res.ok),
     ])
-      .then(([data, loggedIn]: [Question[], boolean]) => {
+      .then(async ([quizRes, loggedIn]) => {
+        if (quizRes.status === 403) {
+          const data = await quizRes.json().catch(() => ({}))
+          if (data.error === "premium_required") {
+            setPremiumRequired(true)
+            setLoading(false)
+            return
+          }
+        }
+        const data = await quizRes.json()
         setQuestions(data)
-        setIsLoggedIn(loggedIn)
+        setIsLoggedIn(loggedIn as boolean)
         setLoading(false)
       })
       .catch((err) => {
@@ -59,8 +68,43 @@ export default function Quiz({ params }: { params: Promise<{ category: string }>
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-pink-50 to-blue-50">
-      <p>Loading...</p>
-    </div>
+        <p>Loading...</p>
+      </div>
+    )
+  }
+
+  if (premiumRequired) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-pink-50 to-blue-50 px-4">
+        <Card className="w-full max-w-sm shadow-xl border-pink-200">
+          <CardHeader className="text-center bg-pink-50 rounded-t-lg">
+            <div className="mx-auto mb-2 bg-pink-100 p-3 rounded-full w-14 h-14 flex items-center justify-center">
+              <Crown className="h-7 w-7 text-pink-600" />
+            </div>
+            <CardTitle className="text-pink-700">プレミアムプランにアップグレード</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-4 text-center">
+            <p className="text-gray-600 text-sm mb-2">
+              このカテゴリーはプレミアム会員限定です。
+            </p>
+            <p className="text-gray-700 text-sm">
+              月額 <span className="font-bold text-pink-600">¥480</span> で全5カテゴリーが使い放題になります。
+            </p>
+          </CardContent>
+          <CardFooter className="flex flex-col gap-2">
+            <Link href="/pricing" className="w-full">
+              <Button className="w-full bg-pink-600 hover:bg-pink-700">
+                今すぐアップグレード
+              </Button>
+            </Link>
+            <Link href="/categories" className="w-full">
+              <Button variant="ghost" className="w-full text-gray-500">
+                カテゴリー選択に戻る
+              </Button>
+            </Link>
+          </CardFooter>
+        </Card>
+      </div>
     )
   }
 

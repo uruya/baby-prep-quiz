@@ -3,11 +3,12 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Home, Trophy, BookOpen, LogOut } from "lucide-react"
+import { Home, Trophy, BookOpen, LogOut, Crown, ExternalLink } from "lucide-react"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
 import { Progress } from "~/components/ui/progress"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs"
+import { getSubscriptionStatus, type SubscriptionStatus } from "~/lib/api"
 
 type UserData = {
   name: string
@@ -42,24 +43,35 @@ export default function Profile() {
   const router = useRouter()
   const [user, setUser] = useState<UserData | null>(null)
   const [stats, setStats] = useState<Stats | null>(null)
+  const [subscription, setSubscription] = useState<SubscriptionStatus>({ tier: "free" })
 
   useEffect(() => {
     Promise.all([
       fetch(`/api/auth/me`),
       fetch(`/api/quiz/stats`),
-    ]).then(async ([meRes, statsRes]) => {
+      getSubscriptionStatus(),
+    ]).then(async ([meRes, statsRes, sub]) => {
       if (!meRes.ok) {
         router.push("/auth/login")
         return
       }
       setUser(await meRes.json())
       if (statsRes.ok) setStats(await statsRes.json())
+      setSubscription(sub)
     })
   }, [router])
 
   const handleLogout = async () => {
     await fetch(`/api/auth/logout`, { method: "POST" })
     router.push("/")
+  }
+
+  const handleBillingPortal = async () => {
+    const res = await fetch("/api/billing/portal", { method: "POST" })
+    if (res.ok) {
+      const { url } = await res.json()
+      if (url) window.location.href = url
+    }
   }
 
   const badges: Badge[] = [
@@ -134,6 +146,40 @@ export default function Profile() {
                     <div className="text-xs text-gray-600">獲得ポイント</div>
                   </div>
                 </div>
+
+                {subscription.tier === "premium" ? (
+                  <div className="p-3 bg-amber-50 rounded-lg border border-amber-200 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Crown className="h-4 w-4 text-amber-600" />
+                        <span className="text-sm font-medium text-amber-800">プレミアムプラン</span>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="border-amber-300 text-amber-700 hover:bg-amber-100 flex items-center gap-1"
+                        onClick={handleBillingPortal}
+                      >
+                        <ExternalLink className="h-3 w-3" />
+                        管理
+                      </Button>
+                    </div>
+                    {subscription.expiresAt && (
+                      <p className="text-xs text-amber-700">
+                        有効期限: {new Date(subscription.expiresAt).toLocaleDateString("ja-JP")}
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
+                    <span className="text-sm text-gray-600">無料プラン</span>
+                    <Link href="/pricing">
+                      <Button size="sm" className="bg-pink-600 hover:bg-pink-700">
+                        アップグレード
+                      </Button>
+                    </Link>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>

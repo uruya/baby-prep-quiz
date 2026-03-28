@@ -5,19 +5,50 @@ import (
 	"net/http"
 	"strings"
 
+	"baby-prep-quiz/domain"
 	"baby-prep-quiz/usecase"
 )
 
 type QuizHandler struct {
 	quizUC *usecase.QuizUsecase
+	authUC *usecase.AuthUsecase
 }
 
-func NewQuizHandler(quizUC *usecase.QuizUsecase) *QuizHandler {
-	return &QuizHandler{quizUC: quizUC}
+func NewQuizHandler(quizUC *usecase.QuizUsecase, authUC *usecase.AuthUsecase) *QuizHandler {
+	return &QuizHandler{quizUC: quizUC, authUC: authUC}
 }
 
 func (h *QuizHandler) GetByCategory(w http.ResponseWriter, r *http.Request) {
 	category := strings.TrimPrefix(r.URL.Path, "/api/quiz/")
+
+	// freeカテゴリ以外はプレミアム判定
+	if !domain.FreeCategories[category] {
+		cookie, err := r.Cookie("session")
+		if err != nil {
+			writePremiumRequired(w)
+			return
+		}
+		claims, err := h.authUC.ParseToken(cookie.Value)
+		if err != nil {
+			writePremiumRequired(w)
+			return
+		}
+		user, err := h.authUC.GetUserByID(claims.UserID)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "ユーザー情報の取得に失敗しました")
+			return
+		}
+		sub := &domain.Subscription{
+			UserID:    user.ID,
+			Tier:      user.SubscriptionTier,
+			ExpiresAt: user.SubscriptionExpiresAt,
+		}
+		if !sub.IsActive() {
+			writePremiumRequired(w)
+			return
+		}
+	}
+
 	questions, err := h.quizUC.GetQuestions(category)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -70,4 +101,10 @@ func (h *QuizHandler) GetStats(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(stats)
+}
+
+func writePremiumRequired(w http.ResponseWriter) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusForbidden)
+	json.NewEncoder(w).Encode(map[string]string{"error": "premium_required"})
 }
