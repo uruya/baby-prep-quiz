@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/stripe/stripe-go/v76"
 
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/postgres"
@@ -45,13 +46,20 @@ func main() {
 	}
 	log.Println("Database migration completed!")
 
+	// Stripe初期化
+	stripe.Key = cfg.StripeSecretKey
+
 	// DI
 	userRepo := repository.NewUserRepository(db)
 	quizRepo := repository.NewQuizRepository(db)
+	subRepo := repository.NewSubscriptionRepository(db)
 	authUC := usecase.NewAuthUsecase(userRepo, cfg.JWTSecret)
 	quizUC := usecase.NewQuizUsecase(quizRepo)
+	subUC := usecase.NewSubscriptionUsecase(subRepo)
 	authH := handler.NewAuthHandler(authUC)
-	quizH := handler.NewQuizHandler(quizUC)
+	quizH := handler.NewQuizHandler(quizUC, authUC)
+	subH := handler.NewSubscriptionHandler(subUC)
+	billingH := handler.NewBillingHandler(subUC, authUC, cfg.StripePriceID, cfg.StripeWebhookSecret, cfg.FrontendURL)
 
 	// CORS
 	corsHandler := func(h http.Handler) http.Handler {
@@ -77,6 +85,11 @@ func main() {
 	mux.HandleFunc("/api/quiz/results", handler.AuthMiddleware(authUC, quizH.SaveResult))
 	mux.HandleFunc("/api/quiz/stats", handler.AuthMiddleware(authUC, quizH.GetStats))
 	mux.Handle("/api/quiz/", http.HandlerFunc(quizH.GetByCategory))
+	mux.HandleFunc("/api/subscription/status", handler.AuthMiddleware(authUC, subH.Status))
+	mux.HandleFunc("/api/subscription/upgrade", handler.AuthMiddleware(authUC, subH.Upgrade))
+	mux.HandleFunc("/api/billing/checkout", handler.AuthMiddleware(authUC, billingH.Checkout))
+	mux.HandleFunc("/api/billing/portal", handler.AuthMiddleware(authUC, billingH.Portal))
+	mux.HandleFunc("/api/billing/webhook", billingH.Webhook)
 
 	log.Println("Server started on :8080")
 	if err := http.ListenAndServe(":8080", corsHandler(mux)); err != nil {

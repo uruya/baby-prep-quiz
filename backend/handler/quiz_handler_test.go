@@ -33,7 +33,7 @@ func (m *mockQuizRepoForHandler) GetStats(userID int) (*domain.QuizStats, error)
 
 func newTestQuizHandler(repo domain.QuizRepository) *QuizHandler {
 	uc := usecase.NewQuizUsecase(repo)
-	return NewQuizHandler(uc)
+	return NewQuizHandler(uc, nil)
 }
 
 func TestGetByCategoryHandler_Success(t *testing.T) {

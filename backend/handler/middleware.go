@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"time"
 
 	"baby-prep-quiz/usecase"
 )
@@ -67,4 +68,15 @@ func AuthMiddleware(authUC *usecase.AuthUsecase, next http.HandlerFunc) http.Han
 func getUserID(r *http.Request) (int, bool) {
 	id, ok := r.Context().Value(userIDKey).(int)
 	return id, ok
+}
+
+// isPremium はサブスクリプション状態がプレミアムかどうかを判定する
+func isPremium(tier string, expiresAt *time.Time) bool {
+	if tier != "premium" {
+		return false
+	}
+	if expiresAt != nil && expiresAt.Before(time.Now()) {
+		return false
+	}
+	return true
 }
