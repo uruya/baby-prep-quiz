@@ -73,6 +73,8 @@ func (r *webhookSubscriptionRepo) DeactivatePremiumByCustomerID(customerID strin
 	return nil
 }
 
+// signedWebhookRequest はStripeが送る t=...,v1=... 形式の署名を生成する。
+// これにより、テストでも本番と同じConstructEventの署名検証を通す。
 func signedWebhookRequest(t *testing.T, secret, payload string) *http.Request {
 	t.Helper()
 	timestamp := time.Now().Unix()
@@ -125,11 +127,11 @@ func TestBillingWebhookIntegration_CheckoutActivatesPremium(t *testing.T) {
 func TestBillingWebhookIntegration_SubscriptionStateChanges(t *testing.T) {
 	const secret = "whsec_test"
 	tests := []struct {
-		name       string
-		eventType  string
-		status     string
+		name        string
+		eventType   string
+		status      string
 		initialTier string
-		wantTier   string
+		wantTier    string
 	}{
 		{
 			name:        "updated active restores access",
