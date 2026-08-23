@@ -86,7 +86,6 @@ func main() {
 	mux.HandleFunc("/api/quiz/stats", handler.AuthMiddleware(authUC, quizH.GetStats))
 	mux.Handle("/api/quiz/", http.HandlerFunc(quizH.GetByCategory))
 	mux.HandleFunc("/api/subscription/status", handler.AuthMiddleware(authUC, subH.Status))
-	mux.HandleFunc("/api/subscription/upgrade", handler.AuthMiddleware(authUC, subH.Upgrade))
 	mux.HandleFunc("/api/billing/checkout", handler.AuthMiddleware(authUC, billingH.Checkout))
 	mux.HandleFunc("/api/billing/portal", handler.AuthMiddleware(authUC, billingH.Portal))
 	mux.HandleFunc("/api/billing/webhook", billingH.Webhook)
