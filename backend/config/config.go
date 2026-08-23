@@ -9,9 +9,12 @@ import (
 )
 
 type Config struct {
-	DatabaseURL string
-	JWTSecret   string
-	FrontendURL string
+	DatabaseURL          string
+	JWTSecret            string
+	FrontendURL          string
+	StripeSecretKey      string
+	StripeWebhookSecret  string
+	StripePriceID        string
 }
 
 func Load() *Config {
@@ -34,8 +37,11 @@ func Load() *Config {
 	)
 
 	return &Config{
-		DatabaseURL: dbURL,
-		JWTSecret:   viper.GetString("jwt.secret"),
-		FrontendURL: strings.TrimRight(viper.GetString("app.frontend_url"), "/"),
+		DatabaseURL:         dbURL,
+		JWTSecret:           viper.GetString("jwt.secret"),
+		FrontendURL:         strings.TrimRight(viper.GetString("app.frontend_url"), "/"),
+		StripeSecretKey:     viper.GetString("app.stripe_secret_key"),
+		StripeWebhookSecret: viper.GetString("app.stripe_webhook_secret"),
+		StripePriceID:       viper.GetString("app.stripe_price_id"),
 	}
 }

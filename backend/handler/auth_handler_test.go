@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"golang.org/x/crypto/bcrypt"
 
@@ -17,8 +18,10 @@ import (
 
 // mockUserRepoForHandler は handler テスト用のモックリポジトリ
 type mockUserRepoForHandler struct {
-	createFn      func(name, email, passwordHash string) (*domain.User, error)
-	findByEmailFn func(email string) (*domain.User, string, error)
+	createFn             func(name, email, passwordHash string) (*domain.User, error)
+	findByEmailFn        func(email string) (*domain.User, string, error)
+	findByIDFn           func(id int) (*domain.User, error)
+	updateSubscriptionFn func(userID int, tier string, expiresAt *time.Time) error
 }
 
 func (m *mockUserRepoForHandler) Create(name, email, passwordHash string) (*domain.User, error) {
@@ -27,6 +30,20 @@ func (m *mockUserRepoForHandler) Create(name, email, passwordHash string) (*doma
 
 func (m *mockUserRepoForHandler) FindByEmail(email string) (*domain.User, string, error) {
 	return m.findByEmailFn(email)
+}
+
+func (m *mockUserRepoForHandler) FindByID(id int) (*domain.User, error) {
+	if m.findByIDFn != nil {
+		return m.findByIDFn(id)
+	}
+	return &domain.User{ID: id, SubscriptionTier: "free"}, nil
+}
+
+func (m *mockUserRepoForHandler) UpdateSubscription(userID int, tier string, expiresAt *time.Time) error {
+	if m.updateSubscriptionFn != nil {
+		return m.updateSubscriptionFn(userID, tier, expiresAt)
+	}
+	return nil
 }
 
 func newTestAuthHandler(repo domain.UserRepository) *handler.AuthHandler {
@@ -200,6 +217,9 @@ func TestMeHandler_ValidSession(t *testing.T) {
 	repo := &mockUserRepoForHandler{
 		findByEmailFn: func(email string) (*domain.User, string, error) {
 			return &domain.User{ID: 1, Name: "田中太郎", Email: email}, string(hash), nil
+		},
+		findByIDFn: func(id int) (*domain.User, error) {
+			return &domain.User{ID: id, Name: "田中太郎", Email: "taro@example.com", SubscriptionTier: "free"}, nil
 		},
 	}
 	uc := usecase.NewAuthUsecase(repo, "test-secret")

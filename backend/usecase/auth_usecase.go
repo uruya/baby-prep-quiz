@@ -77,6 +77,11 @@ func (u *AuthUsecase) ParseToken(tokenStr string) (*Claims, error) {
 	return c, nil
 }
 
+// GetUserByID はDBから最新のユーザー情報（サブスク状態含む）を取得する
+func (u *AuthUsecase) GetUserByID(id int) (*domain.User, error) {
+	return u.userRepo.FindByID(id)
+}
+
 func (u *AuthUsecase) generateToken(user *domain.User) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, Claims{
 		UserID: user.ID,

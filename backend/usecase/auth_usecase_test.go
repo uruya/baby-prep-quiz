@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"testing"
+	"time"
 
 	"golang.org/x/crypto/bcrypt"
 
@@ -13,8 +14,10 @@ import (
 
 // mockUserRepo は domain.UserRepository のモック実装
 type mockUserRepo struct {
-	createFn      func(name, email, passwordHash string) (*domain.User, error)
-	findByEmailFn func(email string) (*domain.User, string, error)
+	createFn             func(name, email, passwordHash string) (*domain.User, error)
+	findByEmailFn        func(email string) (*domain.User, string, error)
+	findByIDFn           func(id int) (*domain.User, error)
+	updateSubscriptionFn func(userID int, tier string, expiresAt *time.Time) error
 }
 
 func (m *mockUserRepo) Create(name, email, passwordHash string) (*domain.User, error) {
@@ -23,6 +26,20 @@ func (m *mockUserRepo) Create(name, email, passwordHash string) (*domain.User, e
 
 func (m *mockUserRepo) FindByEmail(email string) (*domain.User, string, error) {
 	return m.findByEmailFn(email)
+}
+
+func (m *mockUserRepo) FindByID(id int) (*domain.User, error) {
+	if m.findByIDFn != nil {
+		return m.findByIDFn(id)
+	}
+	return &domain.User{ID: id}, nil
+}
+
+func (m *mockUserRepo) UpdateSubscription(userID int, tier string, expiresAt *time.Time) error {
+	if m.updateSubscriptionFn != nil {
+		return m.updateSubscriptionFn(userID, tier, expiresAt)
+	}
+	return nil
 }
 
 func TestSignUp_Success(t *testing.T) {

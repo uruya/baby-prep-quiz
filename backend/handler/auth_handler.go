@@ -5,7 +5,6 @@ import (
 	"errors"
 	"net/http"
 
-	"baby-prep-quiz/domain"
 	"baby-prep-quiz/usecase"
 )
 
@@ -95,12 +94,13 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusUnauthorized, "セッションが無効です")
 		return
 	}
+	user, err := h.authUC.GetUserByID(claims.UserID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "ユーザー情報の取得に失敗しました")
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(domain.User{
-		ID:    claims.UserID,
-		Name:  claims.Name,
-		Email: claims.Email,
-	})
+	json.NewEncoder(w).Encode(user)
 }
 
 func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {

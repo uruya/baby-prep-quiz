@@ -1,0 +1,16 @@
+database:
+  host: "localhost"
+  port: 5432
+  user: "postgres"
+  password: "postgres"
+  dbname: "postgres"
+  sslmode: "disable"
+
+jwt:
+  secret: "your-jwt-secret"
+
+app:
+  frontend_url: "http://localhost:3000"
+  stripe_secret_key: "sk_test_your_key"
+  stripe_webhook_secret: "whsec_your_secret"
+  stripe_price_id: "price_your_price_id"
