@@ -32,7 +32,7 @@ func (s *Subscription) IsActive() bool {
 
 type SubscriptionRepository interface {
 	GetByUserID(userID int) (*Subscription, error)
-	Upsert(userID int, tier string, expiresAt *time.Time) error
 	ActivatePremium(userID int, stripeCustomerID string) error
+	ActivatePremiumByCustomerID(stripeCustomerID string) error
 	DeactivatePremiumByCustomerID(stripeCustomerID string) error
 }
