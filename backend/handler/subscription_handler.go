@@ -34,23 +34,3 @@ func (h *SubscriptionHandler) Status(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(sub)
 }
-
-// Upgrade はプレミアムプランへのアップグレードを行う（仮実装）
-func (h *SubscriptionHandler) Upgrade(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-	userID, ok := getUserID(r)
-	if !ok {
-		writeError(w, http.StatusUnauthorized, "未ログインです")
-		return
-	}
-	sub, err := h.subUC.Upgrade(userID)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "アップグレードに失敗しました")
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(sub)
-}
