@@ -15,6 +15,8 @@ import (
 	"baby-prep-quiz/usecase"
 )
 
+const maxWebhookBodyBytes = 64 << 10
+
 type BillingHandler struct {
 	subUC               *usecase.SubscriptionUsecase
 	authUC              *usecase.AuthUsecase
@@ -50,6 +52,15 @@ func (h *BillingHandler) Checkout(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "ユーザー情報の取得に失敗しました")
 		return
 	}
+	sub, err := h.subUC.GetStatus(userID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "サブスク情報の取得に失敗しました")
+		return
+	}
+	if sub.IsActive() {
+		writeError(w, http.StatusConflict, "すでにプレミアムプランを利用中です")
+		return
+	}
 
 	params := &stripe.CheckoutSessionParams{
 		PaymentMethodTypes: stripe.StringSlice([]string{"card"}),
@@ -62,8 +73,12 @@ func (h *BillingHandler) Checkout(w http.ResponseWriter, r *http.Request) {
 		Mode:              stripe.String(string(stripe.CheckoutSessionModeSubscription)),
 		SuccessURL:        stripe.String(h.frontendURL + "/profile?upgraded=true"),
 		CancelURL:         stripe.String(h.frontendURL + "/pricing"),
-		CustomerEmail:     stripe.String(user.Email),
 		ClientReferenceID: stripe.String(strconv.Itoa(userID)),
+	}
+	if sub.StripeCustomerID != "" {
+		params.Customer = stripe.String(sub.StripeCustomerID)
+	} else {
+		params.CustomerEmail = stripe.String(user.Email)
 	}
 
 	s, err := checkoutsession.New(params)
@@ -117,7 +132,7 @@ func (h *BillingHandler) Webhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	body, err := io.ReadAll(r.Body)
+	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, maxWebhookBodyBytes))
 	if err != nil {
 		http.Error(w, "Failed to read body", http.StatusBadRequest)
 		return
@@ -129,30 +144,59 @@ func (h *BillingHandler) Webhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	switch event.Type {
-	case "checkout.session.completed":
-		var cs stripe.CheckoutSession
-		if err := json.Unmarshal(event.Data.Raw, &cs); err != nil {
-			http.Error(w, "Failed to parse event", http.StatusBadRequest)
-			return
-		}
-		userID, err := strconv.Atoi(cs.ClientReferenceID)
-		if err != nil || userID == 0 {
-			break
-		}
-		if cs.Customer != nil {
-			h.subUC.ActivatePremium(userID, cs.Customer.ID)
-		}
-	case "customer.subscription.deleted":
-		var sub stripe.Subscription
-		if err := json.Unmarshal(event.Data.Raw, &sub); err != nil {
-			http.Error(w, "Failed to parse event", http.StatusBadRequest)
-			return
-		}
-		if sub.Customer != nil {
-			h.subUC.DeactivatePremiumByCustomerID(sub.Customer.ID)
-		}
+	if err := h.processWebhookEvent(event); err != nil {
+		log.Printf("Stripe webhook processing error for event %s: %v", event.ID, err)
+		http.Error(w, "Webhook processing failed", http.StatusInternalServerError)
+		return
 	}
 
 	w.WriteHeader(http.StatusOK)
+}
+
+func (h *BillingHandler) processWebhookEvent(event stripe.Event) error {
+	switch event.Type {
+	case "checkout.session.completed":
+		var session stripe.CheckoutSession
+		if err := json.Unmarshal(event.Data.Raw, &session); err != nil {
+			return err
+		}
+		if string(session.Mode) != string(stripe.CheckoutSessionModeSubscription) {
+			return nil
+		}
+		paymentStatus := string(session.PaymentStatus)
+		if paymentStatus != "paid" && paymentStatus != "no_payment_required" {
+			return nil
+		}
+		userID, err := strconv.Atoi(session.ClientReferenceID)
+		if err != nil || userID <= 0 || session.Customer == nil || session.Customer.ID == "" {
+			return nil
+		}
+		return h.subUC.ActivatePremium(userID, session.Customer.ID)
+
+	case "customer.subscription.updated":
+		var sub stripe.Subscription
+		if err := json.Unmarshal(event.Data.Raw, &sub); err != nil {
+			return err
+		}
+		if sub.Customer == nil || sub.Customer.ID == "" {
+			return nil
+		}
+		switch string(sub.Status) {
+		case "active", "trialing":
+			return h.subUC.ActivatePremiumByCustomerID(sub.Customer.ID)
+		case "canceled", "unpaid", "incomplete_expired", "paused":
+			return h.subUC.DeactivatePremiumByCustomerID(sub.Customer.ID)
+		}
+
+	case "customer.subscription.deleted":
+		var sub stripe.Subscription
+		if err := json.Unmarshal(event.Data.Raw, &sub); err != nil {
+			return err
+		}
+		if sub.Customer == nil || sub.Customer.ID == "" {
+			return nil
+		}
+		return h.subUC.DeactivatePremiumByCustomerID(sub.Customer.ID)
+	}
+	return nil
 }
