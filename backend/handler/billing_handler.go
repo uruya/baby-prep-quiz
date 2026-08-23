@@ -57,6 +57,7 @@ func (h *BillingHandler) Checkout(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "サブスク情報の取得に失敗しました")
 		return
 	}
+	// 契約中に別のSubscriptionを作ると二重請求になるため、Checkoutを開始させない。
 	if sub.IsActive() {
 		writeError(w, http.StatusConflict, "すでにプレミアムプランを利用中です")
 		return
@@ -75,6 +76,7 @@ func (h *BillingHandler) Checkout(w http.ResponseWriter, r *http.Request) {
 		CancelURL:         stripe.String(h.frontendURL + "/pricing"),
 		ClientReferenceID: stripe.String(strconv.Itoa(userID)),
 	}
+	// 再契約時も同じCustomerを使い、Portalから全履歴を管理できるようにする。
 	if sub.StripeCustomerID != "" {
 		params.Customer = stripe.String(sub.StripeCustomerID)
 	} else {
@@ -132,6 +134,7 @@ func (h *BillingHandler) Webhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// 公開エンドポイントなので、署名検証より前に読み込む本文サイズを制限する。
 	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, maxWebhookBodyBytes))
 	if err != nil {
 		http.Error(w, "Failed to read body", http.StatusBadRequest)
@@ -144,6 +147,7 @@ func (h *BillingHandler) Webhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// 永続化エラーは5xxにして、Stripeに同じイベントを再送してもらう。
 	if err := h.processWebhookEvent(event); err != nil {
 		log.Printf("Stripe webhook processing error for event %s: %v", event.ID, err)
 		http.Error(w, "Webhook processing failed", http.StatusInternalServerError)
@@ -160,6 +164,7 @@ func (h *BillingHandler) processWebhookEvent(event stripe.Event) error {
 		if err := json.Unmarshal(event.Data.Raw, &session); err != nil {
 			return err
 		}
+		// 別用途のCheckoutイベントで有料権限を付与しない。
 		if string(session.Mode) != string(stripe.CheckoutSessionModeSubscription) {
 			return nil
 		}
@@ -181,6 +186,7 @@ func (h *BillingHandler) processWebhookEvent(event stripe.Event) error {
 		if sub.Customer == nil || sub.Customer.ID == "" {
 			return nil
 		}
+		// 一時的なpast_due等はStripeの再試行に任せ、終端状態だけ権限を外す。
 		switch string(sub.Status) {
 		case "active", "trialing":
 			return h.subUC.ActivatePremiumByCustomerID(sub.Customer.ID)
