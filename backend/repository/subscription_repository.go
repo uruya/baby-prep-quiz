@@ -2,7 +2,6 @@ package repository
 
 import (
 	"database/sql"
-	"time"
 
 	"baby-prep-quiz/domain"
 )
@@ -31,18 +30,18 @@ func (r *SubscriptionRepository) GetByUserID(userID int) (*domain.Subscription, 
 	return &sub, nil
 }
 
-func (r *SubscriptionRepository) Upsert(userID int, tier string, expiresAt *time.Time) error {
-	_, err := r.db.Exec(
-		`UPDATE users SET subscription_tier = $1, subscription_expires_at = $2 WHERE id = $3`,
-		tier, expiresAt, userID,
-	)
-	return err
-}
-
 func (r *SubscriptionRepository) ActivatePremium(userID int, stripeCustomerID string) error {
 	_, err := r.db.Exec(
 		`UPDATE users SET subscription_tier = 'premium', subscription_expires_at = NULL, stripe_customer_id = $1 WHERE id = $2`,
 		stripeCustomerID, userID,
+	)
+	return err
+}
+
+func (r *SubscriptionRepository) ActivatePremiumByCustomerID(stripeCustomerID string) error {
+	_, err := r.db.Exec(
+		`UPDATE users SET subscription_tier = 'premium', subscription_expires_at = NULL WHERE stripe_customer_id = $1`,
+		stripeCustomerID,
 	)
 	return err
 }
