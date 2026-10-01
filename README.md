@@ -1,177 +1,115 @@
-# パパクイズ
+# パパクイズ / baby-prep-quiz
 
-もうすぐ父親になる方向けに、出産・育児の基礎知識をクイズ形式で学べるWebアプリケーションです。
+もうすぐ父親になる方向けに、出産・育児の基礎知識をクイズ形式で学べる個人開発のWebアプリです。
+Next.jsのフロントエンドとGoのバックエンドを分離し、認証、学習結果の保存、サブスクリプション連携を実装しています。
 
-**URL**: https://main.d2o9xuo386rh0c.amplifyapp.com
+過去にAWSへデプロイした実績があります。現在の公開環境の稼働状況は未確認のため、本READMEではソースコードと構成・実装内容を中心に紹介します。
 
----
+## 主な機能
 
-## 機能
+- カテゴリー別クイズ、正誤判定、解説表示
+- ユーザー登録・ログイン・ログアウト
+- クイズ結果の保存、マイページでの進捗・ポイント表示
+- 無料カテゴリーと、有効なサブスクリプションが必要なカテゴリーの出し分け
+- Stripe Checkout・Customer Portalとの連携、Webhookによる購読状態の更新
 
-- カテゴリー別クイズ（正誤判定・解説表示）
-- ユーザー登録 / ログイン / ログアウト（httpOnly Cookie + JWT認証）
-- クイズ結果のDB保存
-- マイページ（完了クイズ数・獲得ポイント・カテゴリー別進捗）
-
----
+課金連携は実装内容の紹介であり、有料サービスとしての運用実績や売上を示すものではありません。
 
 ## 技術スタック
 
-### Frontend
-| 技術 | 用途 |
+| 領域 | 技術 |
 |---|---|
-| Next.js 15 (App Router) | フレームワーク |
-| TypeScript | 型安全な開発 |
-| Tailwind CSS | スタイリング |
-| shadcn/ui | UIコンポーネント |
-| Firebase | Analytics |
+| Frontend | Next.js 15 / App Router、React 19、TypeScript、Tailwind CSS、shadcn/ui |
+| Backend | Go 1.23、net/http、database/sql・pgx、Viper |
+| データ・認証 | PostgreSQL、golang-migrate、JWT、bcrypt |
+| 外部サービス | Stripe、Firebase Analytics |
+| テスト・CI | Go testing / httptest、GitHub Actions |
+| 過去のAWSデプロイ構成 | Amplify、App Runner、ECR、RDS（PostgreSQL） |
 
-### Backend
-| 技術 | 用途 |
+アプリのログイン認証はGo側で実装しています。
+
+## 現在のアプリケーション構成
+
+```text
+ブラウザ
+  │ 同一オリジンの /api/* へリクエスト
+  ▼
+Next.js App Router
+  │ Route Handler → proxyToBackend
+  │ サーバー側の BACKEND_URL へ転送
+  ▼
+Go API（net/http）
+  │ handler → usecase → repository
+  ▼
+PostgreSQL
+
+Stripe ──署名付きWebhook──▶ Go API /api/billing/webhook
+```
+
+- [frontend/src/lib/proxy.ts](frontend/src/lib/proxy.ts)でCookie・リクエスト本文・クエリをバックエンドへ転送し、レスポンスのステータスとSet-Cookieをブラウザへ返します。204は本文なしで処理し、バックエンドに接続できない場合は502を返します。
+- Go側は[handler](backend/handler)、[usecase](backend/usecase)、[repository](backend/repository)、[domain](backend/domain)に分けています。[main.go](backend/main.go)で依存関係とルーティングを組み立てます。
+- SQLマイグレーションは[backend/migrations](backend/migrations)で管理し、API起動時に適用します。
+
+### 認証・購読状態
+
+パスワードをbcryptでハッシュ化し、ログイン時にJWTを発行します。CookieにはHttpOnly・Secure・SameSite=Noneを指定しています。Next.jsのプロキシがCookieを転送し、Go側で認証を行います。
+
+有料カテゴリーへのアクセスは、Go側で認証とDB上の購読状態を確認します。StripeのWebhookは署名を検証し、Checkout完了・購読更新・購読削除のイベントに応じて状態を更新します。DB更新に失敗した場合は500を返し、Stripeによる再送の対象とします。
+
+## コードを見る際の入口
+
+| 確認できる内容 | 参照先 |
 |---|---|
-| Go (net/http) | APIサーバー |
-| PostgreSQL | データベース |
-| golang-migrate | DBマイグレーション |
-| golang-jwt | JWT生成・検証 |
-| bcrypt | パスワードハッシュ化 |
-| Viper | 設定管理（環境変数対応） |
-
-### Infrastructure (AWS)
-| サービス | 用途 |
-|---|---|
-| AWS Amplify | フロントエンドのホスティング・CI/CD |
-| AWS App Runner | バックエンドのコンテナ実行 |
-| Amazon ECR | Dockerイメージのレジストリ |
-| Amazon RDS (PostgreSQL) | マネージドDB |
-
----
-
-## アーキテクチャ
-
-```
-GitHub
-  ├── Frontend ──push──▶ AWS Amplify
-  │                          │
-  │                     HTTPS + Cookie (SameSite=None)
-  │                          │
-  └── Backend ──push──▶ Amazon ECR ──▶ AWS App Runner
-                                              │
-                                         SSL接続
-                                              │
-                                       Amazon RDS (PostgreSQL)
-```
-
-### 認証フロー
-
-```
-1. POST /api/auth/login
-2. Backend がJWTを生成 → httpOnly + Secure + SameSite=None Cookie にセット
-3. 以降のリクエストでブラウザが自動的にCookieを送信
-4. GET /api/auth/me でセッション確認・ユーザー情報取得
-```
-
----
+| 依存関係の組み立て、APIルーティング、DB接続 | [backend/main.go](backend/main.go) |
+| HTTP処理、認証、課金・Webhook処理 | [backend/handler](backend/handler) |
+| ビジネスロジックとテスト | [backend/usecase](backend/usecase) |
+| PostgreSQLへのアクセス | [backend/repository](backend/repository) |
+| DBスキーマと変更履歴 | [backend/migrations](backend/migrations) |
+| FrontendからGoへの中継 | [frontend/src/lib/proxy.ts](frontend/src/lib/proxy.ts) |
+| CIの設定 | [.github/workflows/ci.yml](.github/workflows/ci.yml) |
 
 ## API一覧
 
-| メソッド | エンドポイント | 説明 | 認証 |
-|---|---|---|---|
-| GET | `/api/quiz/:category` | カテゴリー別クイズ取得 | 不要 |
-| POST | `/api/auth/signup` | 新規登録 | 不要 |
-| POST | `/api/auth/login` | ログイン | 不要 |
-| GET | `/api/auth/me` | ログイン中ユーザー取得 | 必要 |
-| POST | `/api/auth/logout` | ログアウト | 必要 |
-| POST | `/api/quiz/results` | クイズ結果保存 | 必要 |
-| GET | `/api/quiz/stats` | ユーザー統計取得 | 必要 |
+| メソッド | パス | 内容・条件 |
+|---|---|---|
+| GET | `/api/quiz/{category}` | 無料カテゴリーは認証不要。有料カテゴリーは認証・有効な購読が必要 |
+| POST | `/api/auth/signup` | 新規登録 |
+| POST | `/api/auth/login` | ログイン |
+| GET | `/api/auth/me` | 認証済みユーザーの取得 |
+| POST | `/api/auth/logout` | 認証Cookieの削除 |
+| POST | `/api/quiz/results` | 結果保存（認証が必要） |
+| GET | `/api/quiz/stats` | 統計取得（認証が必要） |
+| GET | `/api/subscription/status` | 購読状態取得（認証が必要） |
+| POST | `/api/billing/checkout` | Checkout開始（認証が必要） |
+| POST | `/api/billing/portal` | Customer Portal開始（認証が必要） |
+| POST | `/api/billing/webhook` | Stripeイベント受信（Webhook署名を検証） |
 
----
+Webhookの送信先はGo APIです。Next.js側にWebhook用の中継ルートはありません。
 
-## DBスキーマ
-
-```sql
--- クイズ問題
-CREATE TABLE questions (
-    id             SERIAL PRIMARY KEY,
-    category       VARCHAR(100) NOT NULL,
-    question       TEXT NOT NULL,
-    options        JSONB NOT NULL,
-    correct_answer INTEGER NOT NULL,
-    explanation    TEXT NOT NULL
-);
-
--- ユーザー
-CREATE TABLE users (
-    id            SERIAL PRIMARY KEY,
-    name          VARCHAR(100) NOT NULL,
-    email         VARCHAR(255) UNIQUE NOT NULL,
-    password_hash TEXT NOT NULL,
-    created_at    TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-
--- クイズ結果
-CREATE TABLE quiz_results (
-    id         SERIAL PRIMARY KEY,
-    user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    category   VARCHAR(100) NOT NULL,
-    score      INTEGER NOT NULL,
-    total      INTEGER NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-```
-
----
-
-## ローカル開発環境のセットアップ
+## ローカル開発
 
 ### 必要なもの
-- Go 1.23+
-- Node.js 20+
-- Docker
 
-### 1. リポジトリのクローン
+Goは[go.mod](backend/go.mod)の指定、Node.jsは20系、Docker Composeを使用します。Firebaseの設定値は自身のプロジェクトの値を用意してください。課金動作を確認する場合はStripeのテスト用設定も必要です。
 
 ```bash
 git clone https://github.com/uruya/baby-prep-quiz.git
-cd baby-prep-quiz
-```
-
-### 2. DBの起動
-
-```bash
-cd backend
+cd baby-prep-quiz/backend
 docker compose up -d
+cp config.yaml.example config.yaml
 ```
 
-### 3. Backendの起動
-
-`backend/config.yaml` を作成：
-
-```yaml
-database:
-  host: localhost
-  port: 5432
-  user: postgres
-  password: postgres
-  dbname: postgres
-  sslmode: disable
-
-jwt:
-  secret: your-local-secret-key
-
-app:
-  frontend_url: http://localhost:3000
-```
+`backend/config.yaml`のJWT秘密鍵をローカル用のランダムな値へ変更します。Stripeを使う場合はテスト用秘密鍵・Webhook署名シークレット・価格IDも設定します。設定例の値は実際の認証情報ではありません。
 
 ```bash
-go run main.go
+# backend ディレクトリで実行
+go run .
 ```
 
-### 4. Frontendの起動
+APIは8080番ポートで起動します。別ターミナルでリポジトリの`frontend`ディレクトリへ移動し、`.env.local`を作成します。
 
-`frontend/.env.local` を作成：
-
-```env
-NEXT_PUBLIC_API_BASE_URL=http://localhost:8080
+```dotenv
+BACKEND_URL=http://127.0.0.1:8080
 NEXT_PUBLIC_FIREBASE_API_KEY=your-key
 NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your-domain
 NEXT_PUBLIC_FIREBASE_PROJECT_ID=your-project-id
@@ -180,52 +118,53 @@ NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your-sender-id
 NEXT_PUBLIC_FIREBASE_APP_ID=your-app-id
 ```
 
+`BACKEND_URL`はNext.jsサーバーからGoへの接続先です。現在のプロキシは、以前のREADMEにあった`NEXT_PUBLIC_API_BASE_URL`を参照していません。
+
 ```bash
-cd frontend
-npm install
+# frontend ディレクトリで実行
+npm ci
 npm run dev
 ```
 
----
+画面は`http://localhost:3000`です。現在の認証CookieはSecure指定のため、ローカルHTTPではブラウザの扱いによってログイン状態を保持できない場合があります。認証を確認する際はHTTPSの開発環境を用意し、`app.frontend_url`もそのオリジンに合わせてください。
 
-## デプロイ
+### Backendの環境変数
 
-### Backend (AWS App Runner)
+Viperにより設定ファイルの値を環境変数で上書きできます。
+
+| 変数 | 用途 |
+|---|---|
+| `DATABASE_HOST` / `DATABASE_PORT` | PostgreSQL接続先 |
+| `DATABASE_USER` / `DATABASE_PASSWORD` | DB認証 |
+| `DATABASE_DBNAME` / `DATABASE_SSLMODE` | DB名・SSL設定 |
+| `JWT_SECRET` | JWT署名用秘密鍵 |
+| `APP_FRONTEND_URL` | Frontendのオリジン。CORS・課金画面からの戻り先に使用 |
+| `APP_STRIPE_SECRET_KEY` | Stripe秘密鍵 |
+| `APP_STRIPE_WEBHOOK_SECRET` | Webhook署名検証用シークレット |
+| `APP_STRIPE_PRICE_ID` | 購読商品の価格ID |
+
+秘密鍵・DBパスワードを含む設定ファイルはコミットしないでください。
+
+## テストとCI
 
 ```bash
-# ECRにログイン
-aws ecr get-login-password --region ap-northeast-1 | \
-  docker login --username AWS --password-stdin \
-  <account-id>.dkr.ecr.ap-northeast-1.amazonaws.com
-
-# ビルド・プッシュ
-docker build -t baby-prep-quiz-backend ./backend
-docker tag baby-prep-quiz-backend:latest \
-  <account-id>.dkr.ecr.ap-northeast-1.amazonaws.com/baby-prep-quiz-backend:latest
-docker push \
-  <account-id>.dkr.ecr.ap-northeast-1.amazonaws.com/baby-prep-quiz-backend:latest
+# backend ディレクトリで実行
+go test ./... -v -race
 ```
 
-App Runnerに設定する環境変数：
+- 認証のテストではパスワード不一致、ユーザー不在、不正なトークンなどを確認しています。
+- 課金・Webhookのテストではhttptestとリポジトリのモックを使い、署名検証、購読イベントに応じた状態更新、DBエラー時の応答などを確認しています。
+- これらは実際のStripe決済や実DBを通すE2Eテストではありません。
+- GitHub ActionsにはGoのテスト、Frontendのlint・buildのジョブを定義しています。設定の存在と実行成功は別なので、最新の結果は[Actions](https://github.com/uruya/baby-prep-quiz/actions)で確認してください。
 
-| キー | 説明 |
-|---|---|
-| `DATABASE_HOST` | RDSエンドポイント |
-| `DATABASE_PORT` | `5432` |
-| `DATABASE_USER` | DBユーザー名 |
-| `DATABASE_PASSWORD` | DBパスワード |
-| `DATABASE_DBNAME` | DB名 |
-| `DATABASE_SSLMODE` | `require` |
-| `JWT_SECRET` | JWT署名用シークレット |
-| `APP_FRONTEND_URL` | AmplifyのURL |
+## AWSへのデプロイ経験
 
-### Frontend (AWS Amplify)
+過去にFrontendをAmplify、Go APIをApp Runner、コンテナイメージをECR、PostgreSQLをRDSへ配置しました。現在の稼働状態は未確認です。
 
-GitHubリポジトリと連携し、`main` ブランチへのpushで自動デプロイ。
+現在のコードをデプロイする際は、Next.jsサーバーが`BACKEND_URL`を参照できるよう設定する必要があります。GoコンテナにはDB・JWT・Stripeの環境変数を渡し、StripeのWebhook送信先には公開されたGo APIのURLを設定します。
 
-Amplifyに設定する環境変数：
+## 今後の改善候補
 
-| キー | 説明 |
-|---|---|
-| `NEXT_PUBLIC_API_BASE_URL` | App RunnerのURL |
-| `NEXT_PUBLIC_FIREBASE_*` | 各Firebase設定値 |
+- 実DB・Stripeテスト環境を含むE2Eの動作検証
+- クイズ結果を保存する際の入力検証の強化
+- デプロイ手順と公開環境の再現性・稼働確認の整備
